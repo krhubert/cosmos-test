@@ -6,15 +6,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/keys"
-	"github.com/cosmos/cosmos-sdk/client/utils"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/simapp"
-	ctypes "github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/genaccounts"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
+	"github.com/cosmos/cosmos-sdk/x/staking"
 	"github.com/cosmos/go-bip39"
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
@@ -30,7 +29,11 @@ import (
 	// "github.com/tendermint/tendermint/proxy"
 )
 
-const accName = "bob"
+const (
+	accName  = "bob"
+	chainID  = "test-chain"
+	password = "1234"
+)
 
 func main() {
 	// recreate directories for configs
@@ -73,7 +76,7 @@ func main() {
 	}
 
 	// create actual account
-	info, err := kb.CreateAccount(accName, mnemonic, "", "", 0, 0)
+	info, err := kb.CreateAccount(accName, mnemonic, "", password, 0, 0)
 	if err != nil {
 		panic(err)
 	}
@@ -88,7 +91,7 @@ func main() {
 
 	addr := info.GetAddress()
 
-	genAcc := genaccounts.NewGenesisAccountRaw(addr, ctypes.NewCoins(), ctypes.NewCoins(), 0, 0, "")
+	genAcc := genaccounts.NewGenesisAccountRaw(addr, sdk.NewCoins(), sdk.NewCoins(), 0, 0, "")
 	if err := genAcc.Validate(); err != nil {
 		panic(err)
 	}
@@ -97,37 +100,54 @@ func main() {
 
 	// add genesis account to the app state
 	genesisAccounts := []genaccounts.GenesisAccount{genAcc}
-
 	appState[genaccounts.ModuleName] = cdc.MustMarshalJSON(genaccounts.GenesisState(genesisAccounts))
 
-	fmt.Println(string(codec.MustMarshalJSONIndent(cdc, appState)))
-
-	// generate first tx
 	if err = simapp.ModuleBasics.ValidateGenesis(appState); err != nil {
 		panic(err)
 	}
 
+	fmt.Println(string(codec.MustMarshalJSONIndent(cdc, appState)))
+
+	// generate first tx
 	nodeID, valPubKey, err := genutil.InitializeNodeValidatorFiles(cfg)
 	if err != nil {
 		panic(err)
 	}
 
-	txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(cdc))
-	cliCtx := client.NewCLIContext().WithCodec(cdc)
+	msg := staking.NewMsgCreateValidator(sdk.ValAddress(addr), info.GetPubKey(), sdk.NewCoin("mesg", sdk.NewInt(0)), staking.Description{}, staking.CommissionRates{}, sdk.NewInt(0))
 
-	tx, err := utils.SignStdTx(txBldr, cliCtx, name, stdTx, false, true)
+	encoder := auth.DefaultTxEncoder(cdc)
+	txBldr := auth.NewTxBuilder(encoder, 0, 0, 0, 0, false, chainID, mnemonic, nil, nil)
+
+	// signTx, err := txBldr.BuildAndSign(accName, password, []sdk.Msg{msg})
+	stdSignMsg, err := txBldr.BuildSignMsg([]sdk.Msg{msg})
 	if err != nil {
 		panic(err)
 	}
 
+	stdTx, err := auth.NewStdTx(stdSignMsg.Msgs, stdSignMsg.Fee, nil, stdSignMsg.Memo), nil
+	if err != nil {
+		panic(err)
+	}
+
+	signTx, err := txBldr.SignStdTx(accName, password, stdTx, false)
+	if err != nil {
+		panic(err)
+	}
+
+	// tx, err := utils.SignStdTx(txBldr, cliCtx, name, stdTx, false, true)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
 	genTxFile := filepath.Join(genTxsDir, fmt.Sprintf("gentx-%v.json", nodeID))
-	if err := ioutil.WriteFile(genTxFile, cdc.MustMarshalJSON(tx), 0644); err != nil {
+	if err := ioutil.WriteFile(genTxFile, cdc.MustMarshalJSON(signTx), 0644); err != nil {
 		panic(err)
 	}
 
 	// set genesic docs and export to file
 	genDoc := &ttypes.GenesisDoc{}
-	genDoc.ChainID = "SimApp"
+	genDoc.ChainID = chainID
 	genDoc.AppState = codec.MustMarshalJSONIndent(cdc, appState)
 	if err := genutil.ExportGenesisFile(genDoc, cfg.GenesisFile()); err != nil {
 		panic(err)
@@ -141,7 +161,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(appMessage)
+	fmt.Println(">>>>>> app-message <<<<<<")
+	fmt.Println(string(appMessage))
+	fmt.Println(">>>>>> app-message <<<<<<")
 
 	// generate node PrivKey
 	nodeKey, err := p2p.LoadOrGenNodeKey(cfg.NodeKeyFile())
