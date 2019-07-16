@@ -14,14 +14,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 )
 
-const (
-	moniker  = "cosmos-localhost"
-	accName  = "bob"
-	chainID  = "test-chain"
-	password = "1234"
-	denom    = "mesg"
-)
-
 func main() {
 	// create new default config
 	cfg := config.DefaultConfig()
