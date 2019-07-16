@@ -30,9 +30,11 @@ import (
 )
 
 const (
+	moniker  = "cosmos-localhost"
 	accName  = "bob"
 	chainID  = "test-chain"
 	password = "1234"
+	denom    = "mesg"
 )
 
 func main() {
@@ -44,6 +46,7 @@ func main() {
 
 	// create new default config
 	cfg := config.DefaultConfig()
+	cfg.Moniker = moniker
 	genTxsDir := filepath.Join(cfg.RootDir, "config", "gentx")
 
 	// create new json logger
@@ -91,7 +94,7 @@ func main() {
 
 	addr := info.GetAddress()
 
-	genAcc := genaccounts.NewGenesisAccountRaw(addr, sdk.NewCoins(), sdk.NewCoins(), 0, 0, "")
+	genAcc := genaccounts.NewGenesisAccountRaw(addr, sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(10000))), sdk.NewCoins(sdk.NewCoin(denom, sdk.NewInt(10000))), 0, 1, "")
 	if err := genAcc.Validate(); err != nil {
 		panic(err)
 	}
@@ -114,7 +117,7 @@ func main() {
 		panic(err)
 	}
 
-	msg := staking.NewMsgCreateValidator(sdk.ValAddress(addr), info.GetPubKey(), sdk.NewCoin("mesg", sdk.NewInt(0)), staking.Description{}, staking.CommissionRates{}, sdk.NewInt(0))
+	msg := staking.NewMsgCreateValidator(sdk.ValAddress(addr), info.GetPubKey(), sdk.NewCoin("mesg", sdk.NewInt(1)), staking.NewDescription(moniker, "", "", ""), staking.CommissionRates{}, sdk.NewInt(1))
 
 	encoder := auth.DefaultTxEncoder(cdc)
 	txBldr := auth.NewTxBuilder(encoder, 0, 0, 0, 0, false, chainID, mnemonic, nil, nil)
