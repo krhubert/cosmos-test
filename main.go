@@ -112,27 +112,33 @@ func main() {
 	fmt.Println(string(codec.MustMarshalJSONIndent(cdc, appState)))
 
 	// generate first tx
-	nodeID, valPubKey, err := genutil.InitializeNodeValidatorFiles(cfg)
+	nodeID, valPubKey, err := genutil.InitializeNodeValidatorFiles(cfg) // get node id and pub key
 	if err != nil {
 		panic(err)
 	}
 
-	msg := staking.NewMsgCreateValidator(sdk.ValAddress(addr), info.GetPubKey(), sdk.NewCoin("mesg", sdk.NewInt(1)), staking.NewDescription(moniker, "", "", ""), staking.CommissionRates{}, sdk.NewInt(1))
+	// create msg for validato creation
+	description := staking.NewDescription(moniker, "", "", "")
+	minSelfDelegation := sdk.NewInt(1)
+	selfDelegationCoin := sdk.NewCoin(denom, sdk.NewInt(1))
+	msg := staking.NewMsgCreateValidator(sdk.ValAddress(addr), info.GetPubKey(), selfDelegationCoin, description, staking.CommissionRates{}, minSelfDelegation)
 
 	encoder := auth.DefaultTxEncoder(cdc)
 	txBldr := auth.NewTxBuilder(encoder, 0, 0, 0, 0, false, chainID, mnemonic, nil, nil)
 
-	// signTx, err := txBldr.BuildAndSign(accName, password, []sdk.Msg{msg})
+	// buidl standard sign msg with txbuilder and calculate the fees
 	stdSignMsg, err := txBldr.BuildSignMsg([]sdk.Msg{msg})
 	if err != nil {
 		panic(err)
 	}
 
+	// create std tx
 	stdTx, err := auth.NewStdTx(stdSignMsg.Msgs, stdSignMsg.Fee, nil, stdSignMsg.Memo), nil
 	if err != nil {
 		panic(err)
 	}
 
+	// sign the tx
 	signTx, err := txBldr.SignStdTx(accName, password, stdTx, false)
 	if err != nil {
 		panic(err)
@@ -143,6 +149,7 @@ func main() {
 	// 	panic(err)
 	// }
 
+	// write first sign tx to file
 	genTxFile := filepath.Join(genTxsDir, fmt.Sprintf("gentx-%v.json", nodeID))
 	if err := ioutil.WriteFile(genTxFile, cdc.MustMarshalJSON(signTx), 0644); err != nil {
 		panic(err)
@@ -157,7 +164,6 @@ func main() {
 	}
 
 	// collect-gentxs
-
 	initCfg := genutil.NewInitConfig(genDoc.ChainID, genTxsDir, "", nodeID, valPubKey)
 
 	appMessage, err := genutil.GenAppStateFromConfig(cdc, cfg, initCfg, *genDoc, genaccounts.AppModuleBasic{})
