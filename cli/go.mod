@@ -12,7 +12,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190620071333-e64a0ec8b42a // indirect
 	github.com/cosmos/cosmos-sdk v0.28.2-0.20190711105643-280734d0e37f
 	github.com/cosmos/go-bip39 v0.0.0-20180819234021-555e2067c45d
-	github.com/cosmos/sdk-application-tutorial v0.0.0-20190714091954-680cc25100c5 // indirect
+	github.com/cosmos/sdk-application-tutorial v0.0.0-20190714091954-680cc25100c5
 	github.com/etcd-io/bbolt v1.3.3 // indirect
 	github.com/go-kit/kit v0.9.0 // indirect
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect

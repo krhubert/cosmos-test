@@ -15,7 +15,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	"github.com/cosmos/go-bip39"
-	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
@@ -144,11 +143,6 @@ func main() {
 		panic(err)
 	}
 
-	// tx, err := utils.SignStdTx(txBldr, cliCtx, name, stdTx, false, true)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
 	// write first sign tx to file
 	genTxFile := filepath.Join(genTxsDir, fmt.Sprintf("gentx-%v.json", nodeID))
 	if err := ioutil.WriteFile(genTxFile, cdc.MustMarshalJSON(signTx), 0644); err != nil {
@@ -181,20 +175,21 @@ func main() {
 	}
 
 	// start sapp as standalone server for test.
-	s, err := server.NewServer(cfg.ProxyApp, cfg.ABCI, sapp)
-	if err != nil {
-		panic(err)
-	}
-	s.SetLogger(logger)
-	if err := s.Start(); err != nil {
-		panic(err)
-	}
+	// s, err := server.NewServer(cfg.ProxyApp, cfg.ABCI, sapp)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// s.SetLogger(logger)
+	// if err := s.Start(); err != nil {
+	// 	panic(err)
+	// }
 
+	fmt.Println(">>>>>> create node <<<<<<")
 	node, err := node.NewNode(cfg,
 		privval.LoadOrGenFilePV(cfg.PrivValidatorKeyFile(), cfg.PrivValidatorStateFile()),
 		nodeKey,
-		// proxy.NewLocalClientCreator(sapp), // sapp could be also started as local client
-		proxy.NewRemoteClientCreator(cfg.ProxyApp, cfg.ABCI, false),
+		proxy.NewLocalClientCreator(sapp), // sapp could be also started as local client
+		// proxy.NewRemoteClientCreator(cfg.ProxyApp, cfg.ABCI, false),
 		// proxy.NewLocalClientCreator(counter.NewCounterApplication(false)),
 		node.DefaultGenesisDocProviderFunc(cfg),
 		node.DefaultDBProvider,
@@ -205,6 +200,7 @@ func main() {
 		panic(err)
 	}
 
+	fmt.Println(">>>>>> start the server <<<<<<")
 	if err := node.Start(); err != nil {
 		panic(err)
 	}
