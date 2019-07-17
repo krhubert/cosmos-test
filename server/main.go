@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
-	"github.com/cosmos/cosmos-sdk/simapp"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
@@ -17,7 +15,10 @@ import (
 func main() {
 	// create new default config
 	cfg := config.DefaultConfig()
-	cfg.SetRoot(simapp.DefaultNodeHome)
+	cfg.SetRoot("s1")
+	// cfg.P2P.Seeds = "57e1d834e500ac497cc30c884ebb85a0879ca295@localhost:26656"
+	// cfg.RPC.ListenAddress = "tcp://0.0.0.0:36657"
+	// cfg.P2P.ListenAddress = "tcp://0.0.0.0:36656"
 
 	// create new json logger
 	logger := log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
@@ -26,7 +27,10 @@ func main() {
 	db := db.NewMemDB()
 
 	// create simple app
-	sapp := simapp.NewSimApp(logger, db, nil, true, 0)
+	sapp, err := NewSimApp(logger, db)
+	if err != nil {
+		panic(err)
+	}
 
 	// generate node PrivKey
 	nodeKey, err := p2p.LoadOrGenNodeKey(cfg.NodeKeyFile())
@@ -34,7 +38,6 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println(">>>>>> create node <<<<<<")
 	node, err := node.NewNode(cfg,
 		privval.LoadOrGenFilePV(cfg.PrivValidatorKeyFile(), cfg.PrivValidatorStateFile()),
 		nodeKey,
@@ -48,7 +51,6 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println(">>>>>> start the server <<<<<<")
 	if err := node.Start(); err != nil {
 		panic(err)
 	}
