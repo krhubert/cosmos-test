@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/krhubert/cosmos-test/serviceapp"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
@@ -59,10 +60,17 @@ func main() {
 	}
 
 	fmt.Println("LET DO THIS")
+
 	time.Sleep(1 * time.Second)
-	ctx := sapp.NewContext(true, abci.Header{})
-	sapp.saKeeper.SetService(ctx, []byte("test"), []byte("my service"))
-	fmt.Println(sapp.saKeeper.GetService(ctx, []byte("test")))
+	sapp.Deliver(tx{serviceapp.NewMsgSetService([]byte("test"), []byte("service"))})
+	// ctx := sapp.NewContext(false, abci.Header{Height: sapp.LastBlockHeight()})
+	// sapp.saKeeper.SetService(ctx, []byte("test"), []byte("my service"))
+	// fmt.Println(sapp.saKeeper.GetService(ctx, []byte("test")))
 
 	select {}
 }
+
+type tx []sdk.Msg
+
+func (t tx) GetMsgs() []sdk.Msg       { return t }
+func (t tx) ValidateBasic() sdk.Error { return nil }

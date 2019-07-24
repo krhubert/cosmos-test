@@ -11,4 +11,7 @@ func init() {
 }
 
 // RegisterCodec registers concrete types on the Amino codec
-func RegisterCodec(cdc *codec.Codec) {}
+func RegisterCodec(cdc *codec.Codec) {
+	cdc.RegisterConcrete(MsgSetService{}, "serviceapp/SetService", nil)
+	cdc.RegisterConcrete(MsgGetService{}, "serviceapp/GetService", nil)
+}

@@ -21,15 +21,12 @@ func NewKeeper(storeKey sdk.StoreKey, cdc *codec.Codec) Keeper {
 }
 
 // Gets the entire Whois metadata struct for a name
-func (k Keeper) GetService(ctx sdk.Context, hash []byte) *Service {
+func (k Keeper) GetService(ctx sdk.Context, hash []byte) []byte {
 	store := ctx.KVStore(k.storeKey)
 	if !store.Has(hash) {
 		return nil
 	}
-	return &Service{
-		Hash: hash,
-		Data: store.Get(hash),
-	}
+	return store.Get(hash)
 }
 
 // Sets the entire Whois metadata struct for a name

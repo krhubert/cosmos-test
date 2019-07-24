@@ -41,8 +41,8 @@ func ExportGenesis(ctx sdk.Context, k Keeper) GenesisState {
 	iterator := k.GetServicesIterator(ctx)
 	for ; iterator.Valid(); iterator.Next() {
 		hash := iterator.Key()
-		service := k.GetService(ctx, hash)
-		services = append(services, service)
+		data := k.GetService(ctx, hash)
+		services = append(services, &Service{Hash: hash, Data: data})
 	}
 	return GenesisState{Services: services}
 }
