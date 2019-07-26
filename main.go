@@ -1,34 +1,35 @@
 package main
 
 import (
-	"time"
+	"os"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/mesg-foundation/test/app"
-	"github.com/mesg-foundation/test/service"
+	"github.com/cosmos/sdk-application-tutorial/app"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/privval"
+	pvm "github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
-	tm "github.com/tendermint/tendermint/types"
 )
 
 func main() {
-	app := app.New()
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	db := db.NewMemDB()
+	app := app.NewServiceApp(logger, db)
 
 	cfg := config.DefaultConfig()
+	cfg.SetRoot("./node")
 	nodeKey, err := p2p.LoadOrGenNodeKey(cfg.NodeKeyFile())
 	if err != nil {
 		panic(err)
 	}
 
-	validator := privval.LoadOrGenFilePV(cfg.PrivValidatorKeyFile(), cfg.PrivValidatorStateFile())
-	node, err := node.NewNode(cfg,
-		validator,
+	tmNode, err := node.NewNode(cfg,
+		pvm.LoadOrGenFilePV(cfg.PrivValidatorKeyFile(), cfg.PrivValidatorStateFile()),
 		nodeKey,
 		proxy.NewLocalClientCreator(app),
-		genesisLoader(nodeKey),
+		node.DefaultGenesisDocProviderFunc(cfg),
 		node.DefaultDBProvider,
 		node.DefaultMetricsProvider(cfg.Instrumentation),
 		app.Logger(),
@@ -36,40 +37,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if err := node.Start(); err != nil {
+	if err := tmNode.Start(); err != nil {
 		panic(err)
 	}
 
-	time.Sleep(1000)
-
-	createService(app)
-
 	select {}
-}
-
-func createService(application *app.MyApp) sdk.Result {
-	return application.Deliver(app.NewTx([]sdk.Msg{
-		service.MsgSetService{
-			Name: "test",
-			Sid:  "test",
-		},
-	}))
-}
-
-func genesisLoader(validator *p2p.NodeKey) func() (*tm.GenesisDoc, error) {
-	return func() (*tm.GenesisDoc, error) {
-		return &tm.GenesisDoc{
-			GenesisTime:     time.Unix(0, 0),
-			ChainID:         "xxx",
-			ConsensusParams: tm.DefaultConsensusParams(),
-			Validators: []tm.GenesisValidator{
-				tm.GenesisValidator{
-					Address: validator.PubKey().Address(),
-					PubKey:  validator.PubKey(),
-					Power:   1,
-					Name:    "validator",
-				},
-			},
-		}, nil
-	}
 }
