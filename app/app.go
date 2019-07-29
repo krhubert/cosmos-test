@@ -69,7 +69,7 @@ func MakeCodec() *codec.Codec {
 // ServiceApp ...
 type ServiceApp struct {
 	*bam.BaseApp
-	cdc *codec.Codec
+	Cdc *codec.Codec
 
 	// Keys to access the substores
 	keyMain     *sdk.KVStoreKey
@@ -79,7 +79,7 @@ type ServiceApp struct {
 	tkeyStaking *sdk.TransientStoreKey
 	keyDistr    *sdk.KVStoreKey
 	tkeyDistr   *sdk.TransientStoreKey
-	keyNS       *sdk.KVStoreKey
+	keyService  *sdk.KVStoreKey
 	keyParams   *sdk.KVStoreKey
 	tkeyParams  *sdk.TransientStoreKey
 	keySlashing *sdk.KVStoreKey
@@ -92,7 +92,7 @@ type ServiceApp struct {
 	distrKeeper    distr.Keeper
 	supplyKeeper   supply.Keeper
 	paramsKeeper   params.Keeper
-	nsKeeper       service.Keeper
+	serviceKeeper  service.Keeper
 
 	// Module Manager
 	mm *module.Manager
@@ -110,7 +110,7 @@ func NewServiceApp(logger log.Logger, db dbm.DB) *ServiceApp {
 	// Here you initialize your application with the store keys it requires
 	var app = &ServiceApp{
 		BaseApp: bApp,
-		cdc:     cdc,
+		Cdc:     cdc,
 
 		keyMain:     sdk.NewKVStoreKey(bam.MainStoreKey),
 		keyAccount:  sdk.NewKVStoreKey(auth.StoreKey),
@@ -119,14 +119,14 @@ func NewServiceApp(logger log.Logger, db dbm.DB) *ServiceApp {
 		tkeyStaking: sdk.NewTransientStoreKey(staking.TStoreKey),
 		keyDistr:    sdk.NewKVStoreKey(distr.StoreKey),
 		tkeyDistr:   sdk.NewTransientStoreKey(distr.TStoreKey),
-		keyNS:       sdk.NewKVStoreKey(service.StoreKey),
+		keyService:  sdk.NewKVStoreKey(service.ModuleName),
 		keyParams:   sdk.NewKVStoreKey(params.StoreKey),
 		tkeyParams:  sdk.NewTransientStoreKey(params.TStoreKey),
 		keySlashing: sdk.NewKVStoreKey(slashing.StoreKey),
 	}
 
 	// The ParamsKeeper handles parameter storage for the application
-	app.paramsKeeper = params.NewKeeper(app.cdc, app.keyParams, app.tkeyParams, params.DefaultCodespace)
+	app.paramsKeeper = params.NewKeeper(app.Cdc, app.keyParams, app.tkeyParams, params.DefaultCodespace)
 	// Set specific supspaces
 	authSubspace := app.paramsKeeper.Subspace(auth.DefaultParamspace)
 	bankSupspace := app.paramsKeeper.Subspace(bank.DefaultParamspace)
@@ -136,7 +136,7 @@ func NewServiceApp(logger log.Logger, db dbm.DB) *ServiceApp {
 
 	// The AccountKeeper handles address -> account lookups
 	app.accountKeeper = auth.NewAccountKeeper(
-		app.cdc,
+		app.Cdc,
 		app.keyAccount,
 		authSubspace,
 		auth.ProtoBaseAccount,
@@ -151,7 +151,7 @@ func NewServiceApp(logger log.Logger, db dbm.DB) *ServiceApp {
 
 	// The SupplyKeeper collects transaction fees and renders them to the fee distribution module
 	app.supplyKeeper = supply.NewKeeper(
-		app.cdc,
+		app.Cdc,
 		app.keySupply,
 		app.accountKeeper,
 		app.bankKeeper,
@@ -160,7 +160,7 @@ func NewServiceApp(logger log.Logger, db dbm.DB) *ServiceApp {
 
 	// The staking keeper
 	stakingKeeper := staking.NewKeeper(
-		app.cdc,
+		app.Cdc,
 		app.keyStaking,
 		app.tkeyStaking,
 		app.supplyKeeper,
@@ -169,7 +169,7 @@ func NewServiceApp(logger log.Logger, db dbm.DB) *ServiceApp {
 	)
 
 	app.distrKeeper = distr.NewKeeper(
-		app.cdc,
+		app.Cdc,
 		app.keyDistr,
 		distrSubspace,
 		&stakingKeeper,
@@ -179,7 +179,7 @@ func NewServiceApp(logger log.Logger, db dbm.DB) *ServiceApp {
 	)
 
 	app.slashingKeeper = slashing.NewKeeper(
-		app.cdc,
+		app.Cdc,
 		app.keySlashing,
 		&stakingKeeper,
 		slashingSubspace,
@@ -196,10 +196,10 @@ func NewServiceApp(logger log.Logger, db dbm.DB) *ServiceApp {
 
 	// The serviceKeeper is the Keeper from the module for this tutorial
 	// It handles interactions with the namestore
-	app.nsKeeper = service.NewKeeper(
+	app.serviceKeeper = service.NewKeeper(
 		app.bankKeeper,
-		app.keyNS,
-		app.cdc,
+		app.keyService,
+		app.Cdc,
 	)
 
 	app.mm = module.NewManager(
@@ -207,7 +207,7 @@ func NewServiceApp(logger log.Logger, db dbm.DB) *ServiceApp {
 		genutil.NewAppModule(app.accountKeeper, app.stakingKeeper, app.BaseApp.DeliverTx),
 		auth.NewAppModule(app.accountKeeper),
 		bank.NewAppModule(app.bankKeeper, app.accountKeeper),
-		service.NewAppModule(app.nsKeeper, app.bankKeeper),
+		service.NewAppModule(app.serviceKeeper, app.bankKeeper),
 		supply.NewAppModule(app.supplyKeeper, app.accountKeeper),
 		distr.NewAppModule(app.distrKeeper, app.supplyKeeper),
 		slashing.NewAppModule(app.slashingKeeper, app.stakingKeeper),
@@ -255,7 +255,7 @@ func NewServiceApp(logger log.Logger, db dbm.DB) *ServiceApp {
 		app.keyDistr,
 		app.tkeyDistr,
 		app.keySlashing,
-		app.keyNS,
+		app.keyService,
 		app.keyParams,
 		app.tkeyParams,
 	)
@@ -271,14 +271,16 @@ func NewServiceApp(logger log.Logger, db dbm.DB) *ServiceApp {
 // GenesisState represents chain state at the start of the chain. Any initial state (account balances) are stored here.
 type GenesisState map[string]json.RawMessage
 
+// NewDefaultGenesisState ...
 func NewDefaultGenesisState() GenesisState {
 	return ModuleBasics.DefaultGenesis()
 }
 
+// InitChainer ...
 func (app *ServiceApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	var genesisState GenesisState
 
-	err := app.cdc.UnmarshalJSON(req.AppStateBytes, &genesisState)
+	err := app.Cdc.UnmarshalJSON(req.AppStateBytes, &genesisState)
 	if err != nil {
 		panic(err)
 	}
@@ -286,18 +288,24 @@ func (app *ServiceApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) a
 	return app.mm.InitGenesis(ctx, genesisState)
 }
 
+// BeginBlocker ...
 func (app *ServiceApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
 	return app.mm.BeginBlock(ctx, req)
 }
+
+// EndBlocker ...
 func (app *ServiceApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
 	return app.mm.EndBlock(ctx, req)
 }
+
+// LoadHeight ...
 func (app *ServiceApp) LoadHeight(height int64) error {
 	return app.LoadVersion(height, app.keyMain)
 }
 
 //_________________________________________________________
 
+// ExportAppStateAndValidators ...
 func (app *ServiceApp) ExportAppStateAndValidators(forZeroHeight bool, jailWhiteList []string,
 ) (appState json.RawMessage, validators []tmtypes.GenesisValidator, err error) {
 
@@ -305,7 +313,7 @@ func (app *ServiceApp) ExportAppStateAndValidators(forZeroHeight bool, jailWhite
 	ctx := app.NewContext(true, abci.Header{Height: app.LastBlockHeight()})
 
 	genState := app.mm.ExportGenesis(ctx)
-	appState, err = codec.MarshalJSONIndent(app.cdc, genState)
+	appState, err = codec.MarshalJSONIndent(app.Cdc, genState)
 	if err != nil {
 		return nil, nil, err
 	}

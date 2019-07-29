@@ -1,7 +1,7 @@
 package main
 
 import (
-	"os"
+	"fmt"
 
 	"github.com/cosmos/sdk-application-tutorial/app"
 	"github.com/tendermint/tendermint/config"
@@ -11,10 +11,12 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	pvm "github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
+	rpcclient "github.com/tendermint/tendermint/rpc/client"
 )
 
 func main() {
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	logger := log.NewNopLogger()
+	// logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 	db := db.NewMemDB()
 	app := app.NewServiceApp(logger, db)
 
@@ -41,5 +43,24 @@ func main() {
 		panic(err)
 	}
 
+	// cliCtx := context.NewCLIContext().WithCodec(app.Cdc)
+	// txBldr := auth.NewTxBuilderFromCLI().WithTxEncoder(utils.GetTxEncoder(app.Cdc))
+	// account, err := sdk.AccAddressFromHex("")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// msg := service.NewMsgPublish("xxx", account)
+	// if err := msg.ValidateBasic(); err != nil {
+	// 	return err
+	// }
+	// return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+
+	// Query the service based on the tendermint node
+	rpc := rpcclient.NewHTTP(tmNode.Config().RPC.ListenAddress, "/websocket")
+	res, err := rpc.ABCIQuery("custom/service/find/xxx", nil)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(res.Response.String())
 	select {}
 }
