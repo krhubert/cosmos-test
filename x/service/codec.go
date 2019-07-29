@@ -1,9 +1,10 @@
-package types
+package service
 
 import (
 	"github.com/cosmos/cosmos-sdk/codec"
 )
 
+// ModuleCdc ...
 var ModuleCdc = codec.New()
 
 func init() {
@@ -12,6 +13,5 @@ func init() {
 
 // RegisterCodec registers concrete types on the Amino codec
 func RegisterCodec(cdc *codec.Codec) {
-	cdc.RegisterConcrete(MsgSetName{}, "service/SetName", nil)
-	cdc.RegisterConcrete(MsgBuyName{}, "service/BuyName", nil)
+	cdc.RegisterConcrete(MsgPublish{}, "service/publish", nil)
 }

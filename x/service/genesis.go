@@ -30,7 +30,7 @@ func DefaultGenesisState() GenesisState {
 // InitGenesis ...
 func InitGenesis(ctx sdk.Context, keeper Keeper, data GenesisState) []abci.ValidatorUpdate {
 	for _, record := range data.Services {
-		keeper.SetService(ctx, record.Value, record)
+		keeper.SetService(ctx, record.Sid, record)
 	}
 	return []abci.ValidatorUpdate{}
 }

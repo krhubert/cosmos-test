@@ -46,46 +46,6 @@ func (k Keeper) SetService(ctx sdk.Context, name string, srv Service) {
 	store.Set([]byte(name), k.cdc.MustMarshalBinaryBare(srv))
 }
 
-// ResolveName - returns the string that the name resolves to
-func (k Keeper) ResolveName(ctx sdk.Context, name string) string {
-	return k.GetService(ctx, name).Value
-}
-
-// SetName - sets the value string that a name resolves to
-func (k Keeper) SetName(ctx sdk.Context, name string, value string) {
-	srv := k.GetService(ctx, name)
-	srv.Value = value
-	k.SetService(ctx, name, srv)
-}
-
-// HasOwner - returns whether or not the name already has an owner
-func (k Keeper) HasOwner(ctx sdk.Context, name string) bool {
-	return !k.GetService(ctx, name).Owner.Empty()
-}
-
-// GetOwner - get the current owner of a name
-func (k Keeper) GetOwner(ctx sdk.Context, name string) sdk.AccAddress {
-	return k.GetService(ctx, name).Owner
-}
-
-// SetOwner - sets the current owner of a name
-func (k Keeper) SetOwner(ctx sdk.Context, name string, owner sdk.AccAddress) {
-	srv := k.GetService(ctx, name)
-	srv.Owner = owner
-	k.SetService(ctx, name, srv)
-}
-
-// GetPrice - gets the current price of a name
-func (k Keeper) GetPrice(ctx sdk.Context, name string) sdk.Coins {
-	return k.GetService(ctx, name).Price
-}
-
-// SetPrice - sets the current price of a name
-func (k Keeper) SetPrice(ctx sdk.Context, name string, price sdk.Coins) {
-	srv := k.GetService(ctx, name)
-	srv.Price = price
-	k.SetService(ctx, name, srv)
-}
 
 // GetNamesIterator ...
 func (k Keeper) GetNamesIterator(ctx sdk.Context) sdk.Iterator {

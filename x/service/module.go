@@ -89,7 +89,7 @@ func (am AppModule) RegisterInvariants(ir sdk.InvariantRegistry) {}
 
 // Route ...
 func (am AppModule) Route() string {
-	return RouterKey
+	return ModuleName
 }
 
 // NewHandler ...
